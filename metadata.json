@@ -1,0 +1,7 @@
+{
+  "name": "Apple911 Solutions",
+  "description": "High-tech Apple repair and IT support application featuring AI-powered diagnostics and a direct store link.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
