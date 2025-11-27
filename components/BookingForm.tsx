@@ -140,13 +140,34 @@ const BookingForm: React.FC<BookingFormProps> = ({ isOpen, onClose, initialData 
         e.preventDefault();
         setIsGenerating(true);
 
-        // 1. Generate & Download PDF
+        // 1. Initiate Formspree Submission (Async)
+        // We use the Promise to wait for it concurrently with the timeout below
+        const formspreePromise = fetch("https://formspree.io/f/mdkraqzb", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                ...formData,
+                _subject: `New Service Booking: ${formData.name}`, // Helper subject for email
+            })
+        }).catch(err => {
+            console.error("Formspree Submission Error:", err);
+            // We catch error so it doesn't block the user flow
+        });
+
+        // 2. Generate & Download PDF
         const refId = generateJobCardPDF();
 
-        // 2. Wait a moment for download to start visually
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        // 3. Wait a moment for download to start visually AND for Formspree to finish
+        // This ensures the user sees the 'generating' state for at least 1.5s
+        await Promise.all([
+            new Promise(resolve => setTimeout(resolve, 1500)),
+            formspreePromise
+        ]);
 
-        // 3. Create Simplified WhatsApp Link
+        // 4. Create Simplified WhatsApp Link
         const message = `
 *🤖 APPLE911 SERVICE REQUEST*
 *ID:* ${refId}
@@ -161,7 +182,7 @@ Please see the attached file for full details of my request.
 
         const encodedMsg = encodeURIComponent(message);
         
-        // 4. Open WhatsApp
+        // 5. Open WhatsApp
         window.open(`https://wa.me/27817463629?text=${encodedMsg}`, '_blank');
         
         setIsGenerating(false);
@@ -195,6 +216,7 @@ Please see the attached file for full details of my request.
                             <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider">Operative Name</label>
                             <input 
                                 required
+                                name="name"
                                 type="text" 
                                 value={formData.name}
                                 onChange={e => setFormData({...formData, name: e.target.value})}
@@ -206,6 +228,7 @@ Please see the attached file for full details of my request.
                             <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider">Contact Uplink</label>
                             <input 
                                 required
+                                name="phone"
                                 type="tel" 
                                 value={formData.phone}
                                 onChange={e => setFormData({...formData, phone: e.target.value})}
@@ -219,6 +242,7 @@ Please see the attached file for full details of my request.
                         <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider flex items-center gap-1"><Mail size={10} /> Digital Mail Relay</label>
                         <input 
                             required
+                            name="email"
                             type="email" 
                             value={formData.email}
                             onChange={e => setFormData({...formData, email: e.target.value})}
@@ -231,6 +255,7 @@ Please see the attached file for full details of my request.
                         <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider flex items-center gap-1"><MapPin size={10} /> Physical Coordinates</label>
                         <input 
                             required
+                            name="address"
                             type="text" 
                             value={formData.address}
                             onChange={e => setFormData({...formData, address: e.target.value})}
@@ -262,11 +287,14 @@ Please see the attached file for full details of my request.
                                 </button>
                             ))}
                         </div>
+                        {/* Hidden input for Formspree to capture button selection */}
+                        <input type="hidden" name="deviceType" value={formData.deviceType} />
                     </div>
 
                     <div className="space-y-1">
                         <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider">Operation Type</label>
                         <select 
+                            name="serviceType"
                             value={formData.serviceType}
                             onChange={e => setFormData({...formData, serviceType: e.target.value})}
                             className="w-full bg-gray-950 border border-gray-700 focus:border-cyan-500 text-white p-2 text-sm font-mono rounded-sm outline-none"
@@ -282,6 +310,7 @@ Please see the attached file for full details of my request.
                         <label className="text-[10px] font-mono text-cyan-600 uppercase tracking-wider">Anomaly Description</label>
                         <textarea 
                             required
+                            name="description"
                             rows={3}
                             value={formData.description}
                             onChange={e => setFormData({...formData, description: e.target.value})}
